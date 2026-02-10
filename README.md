@@ -128,3 +128,7 @@ node scripts/compare-bundle-size.mjs \
 ## License
 
 MIT
+
+## Development Note
+
+If you are validating CI behavior, open a temporary pull request from a feature branch to trigger the smoke-test workflow.
