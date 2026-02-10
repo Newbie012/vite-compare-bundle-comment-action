@@ -33,3 +33,22 @@ jobs:
           test -f ./tmp-comment.md
           grep -q "### Bundle Stats - Fixture Comparison" ./tmp-comment.md
           grep -q "<!-- bundle-size-compare-action key:Fixture Comparison -->" ./tmp-comment.md
+
+  pr-comment-simulation:
+    name: Simulate PR Comment
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Simulate action comment on this PR
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          base-stats-json-path: fixtures/base-stats.json
+          current-stats-json-path: fixtures/current-stats.json
+          title: Fixture Comparison
