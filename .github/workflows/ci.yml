@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  smoke-test:
+    name: Smoke Test Compare Script
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate markdown from fixtures
+        run: |
+          node scripts/compare-bundle-size.mjs \
+            --base fixtures/base-stats.json \
+            --current fixtures/current-stats.json \
+            --title "Fixture Comparison" \
+            --output ./tmp-comment.md
+
+      - name: Validate generated comment
+        shell: bash
+        run: |
+          test -f ./tmp-comment.md
+          grep -q "### Bundle Stats - Fixture Comparison" ./tmp-comment.md
+          grep -q "<!-- bundle-size-compare-action key:Fixture Comparison -->" ./tmp-comment.md

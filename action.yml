@@ -1,0 +1,90 @@
+name: Compare Vite Bundle Size
+description: Compare two Vite stats JSON files and upsert a PR comment
+
+inputs:
+  github-token:
+    description: GitHub token used to create or update the PR comment
+    required: true
+  current-stats-json-path:
+    description: Path to the head/current stats.json file
+    required: true
+  base-stats-json-path:
+    description: Path to the base stats.json file
+    required: true
+  title:
+    description: Comment title and marker key
+    required: false
+    default: Vite Bundle Size Comparison
+  output-path:
+    description: Path for generated markdown comment body
+    required: false
+    default: ./bundle-size-comment.md
+
+runs:
+  using: composite
+  steps:
+    - name: Generate bundle size comment body
+      shell: bash
+      run: |
+        node "${{ github.action_path }}/scripts/compare-bundle-size.mjs" \
+          --base "${{ inputs.base-stats-json-path }}" \
+          --current "${{ inputs.current-stats-json-path }}" \
+          --title "${{ inputs.title }}" \
+          --output "${{ inputs.output-path }}"
+
+    - name: Upsert PR comment
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+
+          const outputPath = '${{ inputs.output-path }}';
+          const body = fs.readFileSync(outputPath, 'utf8');
+          const markerMatch = body.match(/<!-- bundle-size-compare-action key:(.+?) -->/);
+
+          if (!markerMatch) {
+            throw new Error('Missing marker in generated comment body');
+          }
+
+          const marker = markerMatch[0];
+          const issueNumber = context.issue.number;
+
+          const comments = await github.paginate(github.rest.issues.listComments, {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: issueNumber,
+          });
+
+          const existing = comments.filter(
+            (comment) =>
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body &&
+              comment.body.includes(marker),
+          );
+
+          if (existing.length > 0) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing[0].id,
+              body,
+            });
+
+            for (const duplicate of existing.slice(1)) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: duplicate.id,
+              });
+            }
+
+            return;
+          }
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: issueNumber,
+            body,
+          });
