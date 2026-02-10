@@ -129,6 +129,12 @@ node scripts/compare-bundle-size.mjs \
 
 MIT
 
+## Acknowledgments
+
+This action was inspired by [`wojtekmaj/vite-compare-bundle-size`](https://github.com/wojtekmaj/vite-compare-bundle-size).
+It was implemented independently with a different asset matching strategy
+to handle hashed filename collisions (for example, multiple `index-*.js` chunks).
+
 ## Development Note
 
 If you are validating CI behavior, open a temporary pull request from a feature branch to trigger the smoke-test workflow.
